@@ -1,0 +1,5 @@
+{
+  "name": "Genesys Cloud CX - ICE Idle Reporter",
+  "description": "A high-performance dashboard for monitoring agent idle states, analyzing routing status trends, and optimizing contact center efficiency using Gemini AI insights.",
+  "requestFramePermissions": []
+}
