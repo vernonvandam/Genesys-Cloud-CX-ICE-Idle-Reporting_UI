@@ -30,7 +30,7 @@ const App: React.FC = () => {
   });
 
   const [activeProfileId, setActiveProfileId] = useState<string>(() => {
-    return localStorage.getItem('active_profile_id') || profiles[0].id;
+    return localStorage.getItem('active_profile_id') || (profiles.length > 0 ? profiles[0].id : '');
   });
 
   const activeProfile = useMemo(() => 
@@ -38,10 +38,22 @@ const App: React.FC = () => {
     [profiles, activeProfileId]
   );
 
+  // Effect to persist changes to profiles and active org
   useEffect(() => {
     localStorage.setItem('genesys_profiles', JSON.stringify(profiles));
     localStorage.setItem('active_profile_id', activeProfileId);
   }, [profiles, activeProfileId]);
+
+  // CRITICAL: Clear all data when the active organization changes
+  useEffect(() => {
+    setAgents([]);
+    setSyncHistory([]);
+    setAiAnalysis(null);
+    setSyncError(null);
+    setSearchTerm('');
+    setStatusFilter('All');
+    setPresenceFilter('All');
+  }, [activeProfileId]);
 
   const handleSaveProfile = (newProfile: CustomerProfile) => {
     setProfiles(prev => {
@@ -152,7 +164,7 @@ const App: React.FC = () => {
     }
   };
 
-  const hasCredentials = activeProfile.clientId?.trim() && activeProfile.clientSecret?.trim();
+  const hasCredentials = activeProfile?.clientId?.trim() && activeProfile?.clientSecret?.trim();
 
   // Helper for unique presence types
   const uniquePresences = useMemo(() => {
@@ -171,11 +183,29 @@ const App: React.FC = () => {
           <span className="font-bold text-white text-lg tracking-tight">ICE Idle</span>
         </div>
 
+        {/* Active Org Selector - Now interactive */}
         <div className="px-6 py-2 mb-4">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Active Org</label>
-          <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
-             <div className="text-xs font-bold text-white truncate">{activeProfile.name}</div>
-             <div className="text-[10px] text-indigo-400 mt-0.5">{activeProfile.region}</div>
+          <div className="relative group">
+            <select
+              value={activeProfileId}
+              onChange={(e) => setActiveProfileId(e.target.value)}
+              className="w-full bg-slate-800 text-white text-xs font-bold rounded-lg p-3 border border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer pr-8 hover:bg-slate-750 transition-colors"
+            >
+              {profiles.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 group-hover:text-slate-300">
+              <i className="fas fa-chevron-down text-[10px]"></i>
+            </div>
+            {activeProfile && (
+              <div className="text-[10px] text-indigo-400 mt-1.5 px-1 truncate opacity-70">
+                Region: {activeProfile.region}
+              </div>
+            )}
           </div>
         </div>
 
@@ -231,7 +261,7 @@ const App: React.FC = () => {
               {activeTab === 'reports' && 'Intelligent Insights'}
               {activeTab === 'admin' && 'Admin Settings'}
             </h1>
-            {activeTab !== 'admin' && (
+            {activeTab !== 'admin' && activeProfile && (
               <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-[10px] font-bold border border-indigo-100 uppercase tracking-wide">
                 {activeProfile.name}
               </span>
@@ -472,7 +502,7 @@ const App: React.FC = () => {
                     <i className="fas fa-robot text-3xl text-indigo-600"></i>
                   </div>
                   <h2 className="text-2xl font-bold text-slate-800 mb-2">Generate AI Efficiency Audit</h2>
-                  <p className="text-slate-500 mb-8 max-w-md mx-auto">Gemini 3 Flash will analyze your real-time routing data from {activeProfile.name} to find hidden bottlenecks.</p>
+                  <p className="text-slate-500 mb-8 max-w-md mx-auto">Gemini 3 Flash will analyze your real-time routing data from {activeProfile?.name || 'Customer'} to find hidden bottlenecks.</p>
                   <button 
                     onClick={handleRunAIAnalysis} 
                     disabled={onQueueAgents.length === 0}
@@ -490,7 +520,7 @@ const App: React.FC = () => {
                     <div className="absolute inset-0 flex items-center justify-center"><i className="fas fa-brain text-indigo-600 text-2xl"></i></div>
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 mb-2">Processing Agent Intelligence</h3>
-                  <p className="text-slate-500 animate-pulse">Scanning routing statuses for {activeProfile.name}...</p>
+                  <p className="text-slate-500 animate-pulse">Scanning routing statuses for {activeProfile?.name}...</p>
                 </div>
               )}
               {aiAnalysis && (
@@ -498,7 +528,7 @@ const App: React.FC = () => {
                   <div className="bg-slate-900 p-8 text-white">
                     <div className="flex items-center space-x-3 mb-4">
                       <i className="fas fa-sparkles text-amber-400"></i>
-                      <span className="text-xs font-bold uppercase tracking-widest text-slate-400">AI Audit: {activeProfile.name}</span>
+                      <span className="text-xs font-bold uppercase tracking-widest text-slate-400">AI Audit: {activeProfile?.name}</span>
                     </div>
                     <h2 className="text-3xl font-bold mb-4">Efficiency & Idle Analysis</h2>
                     <p className="text-slate-300 leading-relaxed text-lg">{aiAnalysis.summary}</p>
